@@ -1,8 +1,16 @@
-
+const http = require('http');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 8080;
-const wss = new WebSocketServer({ port: PORT });
+
+// HTTP-сервер, который ничего не отдаёт по обычным запросам
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('ok');
+});
+
+// WebSocket-сервер поверх HTTP — принимает любые пути
+const wss = new WebSocketServer({ server });
 
 const clients = new Map();
 const admins = new Set();
@@ -11,6 +19,8 @@ wss.on('connection', (ws, req) => {
   const url = new URL(req.url, 'http://x');
   const role = url.searchParams.get('role');
   const id   = url.searchParams.get('id') || Math.random().toString(36).slice(2, 8);
+
+  console.log('[connection] role=' + role + ' id=' + id);
 
   if (role === 'admin') {
     admins.add(ws);
@@ -53,4 +63,6 @@ function broadcastToAdmins(obj) {
   for (const a of admins) if (a.readyState === 1) a.send(s);
 }
 
-console.log('WS server on port ' + PORT);
+server.listen(PORT, () => {
+  console.log('Server on port ' + PORT);
+});
